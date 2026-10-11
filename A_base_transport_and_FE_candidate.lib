@@ -1,0 +1,134 @@
+.param V_SD_ASYM=578.09548m
+.param A_SD=150.7555m
+* 3um W / 6um L calibrated Branch-A FeFET/TiO2 model
+* Physical geometry W/L/Cox are explicit. Fit CURRENT_SCALE, mu_coeff, IdMax, etc. instead of changing physical dimensions.
+.subckt FEFET_MDT_FIT D G S
++ VSIGN=16.900501p
+.param W=3u
+.param L=6u
+.param NF=1
+.param Cox=277.66875u
+
+* Structural multidomain definition
+.param NDOM=3
+.param ETA_FE_TERM=5.8256551m
+.param W1=268.70281m
+.param W2=219.50811m
+.param W3=511.78908m
+.param Vset1=-13.661605
+.param Vset2=6.2430675
+.param Vset3=5.4445518
+.param Vreset1=-16.689644
+.param Vreset2=-19.296154
+.param Vreset3=-10.441922
+.param Tau_set1=1.7710421n
+.param Tau_set2=2.4291421m
+.param Tau_set3=1.3100596m
+.param Tau_reset1=4.7940751
+.param Tau_reset2=965.83808m
+.param Tau_reset3=15.31804m
+
+
+* Structural multidomain definition
+* Structural multidomain definition
+
+
+* Structural multidomain definition
+
+.param CURRENT_SCALE=12.270236
+.param Vsw_set=254.51444m
+.param Vsw_reset=1.7274591
+.param Pinit=-1
+.param Vtrap_init=0
+.param Trap_pos=2.1598983
+.param Trap_neg=-458.08451m
+.param Vtrap_pos=-1.5583262
+.param Vtrap_neg=-5.0155356
+.param Vtrap_s=728.04402m
+.param Tau_trap_pos=895.70892u
+.param Tau_trap_neg=1.0972169m
+.param Vth_on=-10.585292
+.param Vth_off=1.5532475
+.param Vimprint=27.031975m
+.param Vsoft=139.46816m
+.param Vscale=1.0849785
+.param Vmob_cross=667.36556m
+.param Vmob_smooth=564.64788m
+.param gamma_low=3.2678921
+.param gamma_high=1.5226905
+.param mu_coeff=1.6141452m
+.param mu_floor=513.8829f
+.param mu_cap=8.0952726m
+.param MuP=-532.83879m
+.param MuTr=13.026777m
+.param MuStateMin=30.693878m
+.param lambda_clm=8.25622196e-30
+.param Vds_smooth=5m
+.param IdMax=44.790179u
+.param VDEFFSAT=99.957844
+.param VDEFFPOW=899.49593m
+.param VDLIM=30.10802
+.param VDPOW=1.1330456
+.param Pcap=288.538m
+.param TrCap=1.1398533m
+.param I_floor=71.918781f
+.param I_sub_at_Vth=2.8490558p
+.param SS=99.29426m
+CP1 p1 0 1 IC={Pinit}
+CP2 p2 0 1 IC={Pinit}
+CP3 p3 0 1 IC={Pinit}
+RP1 p1 0 1e15
+RP2 p2 0 1e15
+RP3 p3 0 1e15
+
+CTRAP vtr 0 1 IC={Vtrap_init}
+RTRAP vtr 0 1e15
+
+.func mx(a,b) {0.5*(a+b+abs(a-b))}
+.func mn(a,b) {0.5*(a+b-abs(a-b))}
+.func sp(x,s) {mx(x,0)+s*ln(1+exp(-abs(x)/s))}
+.func sgm(x) {1/(1+exp(-x))}
+.func powp(x,a) {exp(a*ln(mx(x,1e-30)))}
+.func pclip(p) {mn(1,mx(-1,p))}
+.func pbar(p1,p2,p3) {(W1*pclip(p1)+W2*pclip(p2)+W3*pclip(p3))/mx(W1+W2+W3,1e-30)}
+.func setrate(vg,vset) {sgm((vg-vset)/Vsw_set)}
+.func resetrate(vg,vreset) {sgm((vreset-vg)/Vsw_reset)}
+.func dpdt(p,vg,vset,vreset,tset,treset) {((1-pclip(p))*setrate(vg,vset)/tset)-((1+pclip(p))*resetrate(vg,vreset)/treset)}
+.func traptarget(vg) {Trap_pos*sgm((vg-Vtrap_pos)/Vtrap_s)+Trap_neg*sgm((Vtrap_neg-vg)/Vtrap_s)}
+.func tau_trap(vg) {Tau_trap_pos*sgm((vg-Vtrap_pos)/Vtrap_s)+Tau_trap_neg*sgm((Vtrap_neg-vg)/Vtrap_s)+0.30m}
+.func dtrdt(vtr,vg) {(traptarget(vg)-vtr)/tau_trap(vg)}
+BP1 0 p1 I={dpdt(V(p1),vfe(V(G,S),V(D,S)),Vset1,Vreset1,Tau_set1,Tau_reset1)}
+BP2 0 p2 I={dpdt(V(p2),vfe(V(G,S),V(D,S)),Vset2,Vreset2,Tau_set2,Tau_reset2)}
+BP3 0 p3 I={dpdt(V(p3),vfe(V(G,S),V(D,S)),Vset3,Vreset3,Tau_set3,Tau_reset3)}
+BTRAP 0 vtr I={dtrdt(V(vtr),vfe(V(G,S),V(D,S)))}
+.func vth_pol(p) {0.5*(Vth_on+Vth_off)+0.5*(Vth_on-Vth_off)*p}
+.func vth_eff(p,vtr) {vth_pol(p)+vtr+Vimprint}
+.func vdspos(vd) {abs(vd)}
+.func vmag(vd) {abs(vd)}
+.func vsgn(vd) {vd/(abs(vd)+VSIGN)}
+.func vgeff(vg,vd) {vg-mn(vd,0)}
+.func vfe(vg,vd) {vg-ETA_FE_TERM*mn(vd,0)}
+.func asymfac(vd) {1-A_SD*tanh(vd/mx(V_SD_ASYM,1e-12))}
+.func vov(vg,p,vtr) {sp(vg-vth_eff(p,vtr),Vsoft)}
+.func veff(vg,p,vtr) {sp(vg-vth_eff(p,vtr),Vsoft)}
+.func shigh(vg,p,vtr) {sgm((veff(vg,p,vtr)-Vmob_cross)/Vmob_smooth)}
+.func slow(vg,p,vtr) {1-shigh(vg,p,vtr)}
+.func cont() {powp(mx(Vmob_cross,Vsoft)/Vscale,gamma_low-gamma_high)}
+.func mu_low(vg,p,vtr) {powp(veff(vg,p,vtr)/Vscale,gamma_low)}
+.func mu_high(vg,p,vtr) {cont()*powp(veff(vg,p,vtr)/Vscale,gamma_high)}
+.func mu_state(p,vtr) {mx(MuStateMin,1+MuP*p-MuTr*abs(vtr))}
+.func mu_raw(vg,p,vtr) {mu_floor+mu_coeff*(slow(vg,p,vtr)*mu_low(vg,p,vtr)+shigh(vg,p,vtr)*mu_high(vg,p,vtr))*mu_state(p,vtr)}
+.func mu_fefet(vg,p,vtr) {mn(mu_cap,mu_raw(vg,p,vtr))}
+.func vdeff(vd) {VDEFFSAT*(1-exp(-powp(vmag(vd)/VDEFFSAT,VDEFFPOW)))}
+.func ids_lin_raw(vg,vd,p,vtr) {vov(vg,p,vtr)*vdeff(vd)-0.5*vdeff(vd)*vdeff(vd)}
+.func ids_lin(vg,vd,p,vtr) {NF*(W/L)*mu_fefet(vg,p,vtr)*Cox*mx(ids_lin_raw(vg,vd,p,vtr),0)}
+.func ids_sat(vg,vd,p,vtr) {NF*(W/L)*mu_fefet(vg,p,vtr)*Cox*0.5*vov(vg,p,vtr)*vov(vg,p,vtr)*(1+lambda_clm*mx(vdeff(vd)-vov(vg,p,vtr),0))}
+.func blend(vg,vd,p,vtr) {1/(1+exp((vdeff(vd)-vov(vg,p,vtr))/Vds_smooth))}
+.func ids_on_raw(vg,vd,p,vtr) {blend(vg,vd,p,vtr)*ids_lin(vg,vd,p,vtr)+(1-blend(vg,vd,p,vtr))*ids_sat(vg,vd,p,vtr)}
+.func idlim(vd,p,vtr) {IdMax*(1-exp(-powp(vdeff(vd)/VDLIM,VDPOW)))*mx(0.20,1+Pcap*p-TrCap*abs(vtr))}
+.func ids_on(vg,vd,p,vtr) {idlim(vd,p,vtr)*(1-exp(-ids_on_raw(vg,vd,p,vtr)/mx(idlim(vd,p,vtr),1e-30)))}
+.func vg_min_vth(vg,p,vtr) {mn(vg,vth_eff(p,vtr))}
+.func ids_sub(vg,vd,p,vtr) {I_floor+I_sub_at_Vth*powp(10,(vg_min_vth(vg,p,vtr)-vth_eff(p,vtr))/SS)*(1-exp(-vdspos(vd)/0.026))}
+.func ids_total(vg,vd,p1,p2,p3,vtr) {ids_on(vgeff(vg,vd),vd,pbar(p1,p2,p3),vtr)+ids_sub(vgeff(vg,vd),vd,pbar(p1,p2,p3),vtr)}
+BIDS D S I={vsgn(V(D,S))*asymfac(V(D,S))*(CURRENT_SCALE*mx(I_floor,ids_total(V(G,S),V(D,S),V(p1),V(p2),V(p3),V(vtr))))}
+.ends FEFET_MDT_FIT
